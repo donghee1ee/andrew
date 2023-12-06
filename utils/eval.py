@@ -4,6 +4,52 @@ import matplotlib.pyplot as plt
 import ast
 from PIL import Image
 
+import numpy as np
+
+def calculate_iou_batch(bbox1, bbox2):
+    """
+    Calculate the Intersection over Union (IoU) for batches of bounding boxes.
+    The bounding boxes are expected in [center_x, center_y, width, height] format.
+    bbox1 and bbox2 are arrays of bounding boxes, where each row is a bounding box.
+    """
+    # Convert from center format to corner format
+    bbox1 = bbox_center_to_corners_batch(bbox1)
+    bbox2 = bbox_center_to_corners_batch(bbox2)
+
+    # Determine the coordinates of the intersection rectangles
+    x_left = np.maximum(bbox1[:, 0:1], bbox2[:, 0:1])
+    y_top = np.maximum(bbox1[:, 1:2], bbox2[:, 1:2])
+    x_right = np.minimum(bbox1[:, 2:3], bbox2[:, 2:3])
+    y_bottom = np.minimum(bbox1[:, 3:4], bbox2[:, 3:4])
+
+    # Calculate the area of the intersection rectangles
+    intersection_area = np.maximum(0, x_right - x_left) * np.maximum(0, y_bottom - y_top)
+
+    # Calculate the area of both bounding boxes
+    bbox1_area = (bbox1[:, 2] - bbox1[:, 0]) * (bbox1[:, 3] - bbox1[:, 1])
+    bbox2_area = (bbox2[:, 2] - bbox2[:, 0]) * (bbox2[:, 3] - bbox2[:, 1])
+
+    # Calculate IoU
+    iou = intersection_area / (bbox1_area + bbox2_area - intersection_area)
+
+    # Handle cases where there is no overlap
+    no_overlap = np.logical_or(x_right < x_left, y_bottom < y_top)
+    iou[no_overlap] = 0.0
+
+    return iou
+
+def bbox_center_to_corners_batch(bboxes):
+    """
+    Convert bounding boxes from [center_x, center_y, width, height] to 
+    [x_min, y_min, x_max, y_max] format for a batch of bounding boxes.
+    """
+    x_min = bboxes[:, 0] - bboxes[:, 2] / 2
+    y_min = bboxes[:, 1] - bboxes[:, 3] / 2
+    x_max = bboxes[:, 0] + bboxes[:, 2] / 2
+    y_max = bboxes[:, 1] + bboxes[:, 3] / 2
+    return np.stack([x_min, y_min, x_max, y_max], axis=1)
+
+
 def bbox_center_to_corners(bbox):
     """
     Convert a bounding box from [center_x, center_y, width, height] format 

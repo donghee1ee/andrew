@@ -200,7 +200,7 @@ def generate_data(orig):
     return dataset_data
 
 
-orig_dataset = load_dataset("/mnt/NAS/Andrew/dataset/huggingface/detection-datasets___coco/")
+orig_dataset = load_dataset("/home/donghee/.cache/huggingface/datasets/detection-datasets___coco")
 
 orig_train = orig_dataset['train']
 orig_val = orig_dataset['validation']
@@ -208,5 +208,5 @@ orig_val = orig_dataset['validation']
 train = generate_data(orig_train)
 val = generate_data(orig_val)
 
-# train.save_to_disk("../data/train")
-# val.save_to_disk("../data/val")
+train.save_to_disk("../data/train")
+val.save_to_disk("../data/val")

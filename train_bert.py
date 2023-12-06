@@ -1,35 +1,26 @@
-import json
 import logging
 import os
 import argparse
-import pickle
 
 import torch
-from torch.nn.parallel import DistributedDataParallel as DDP
 from transformers import InstructBlipProcessor, TrainingArguments, Trainer, InstructBlipConfig
-from transformers import TrainerCallback, DataCollatorForSeq2Seq
-from sklearn.metrics import f1_score, accuracy_score, jaccard_score
 
-from data.dataset import load_datasets, CustomDataCollator, collator, Recipe1M_Collator, load_datasets_for_distributed
+from data.dataset import load_datasets
 from data.utils import Vocabulary
 from model.modeling_instructblip import FreezeInstructBlipForConditionalGeneration, BERTInstructBlipForConditionalGeneration
 from model.processing_instructblip import BERTInstructBlipProcessor
 from common.logger import setup_logger
+from common.common import pretty_print
+from common.compute_metrics import compute_metrics
 
 # TODO
-# 2. compute_metric : F1/IoU 
 # 5. log only main process /
-
-def pretty_print(args):
-    args_dict = vars(args)
-    formatted_args = json.dumps(args_dict, indent=4, sort_keys=True)
-    logging.info("Args: \n"+formatted_args)
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Training script for distributed InstructBlip.")
 
     parser.add_argument('--project_name', type=str, default='BERT_vit_train_pretrained_qformer')
-    # /path/to/Recipe1M/dataset
+    # /path/to/dataset
     parser.add_argument('--dataset_path', type=str, default='/nfs_share2/code/donghee/inversecooking/data', help='path containing Recipe1M dataset')
 
     parser.add_argument('--epochs', type=int, default=20)
@@ -74,46 +65,6 @@ def parse_args():
         args.decoder_only = True
 
     return args
-
-def compute_metrics(pred):
-    labels = pred.label_ids
-    preds = torch.sigmoid(torch.tensor(pred.predictions[0])).numpy() >= 0.5
-
-    f1_micro = f1_score(labels, preds, average='micro')
-    f1_macro = f1_score(labels, preds, average='macro')
-    acc = accuracy_score(labels, preds)
-    iou_macro = jaccard_score(labels, preds, average='macro') # TODO macro iou?
-    iou_micro = jaccard_score(labels, preds, average='micro')
-
-    result = {
-        'f1_micro': f1_micro,
-        'f1_macro': f1_macro,
-        'accuracy': acc,
-        'iou_macro': iou_macro,
-        'iou_micro': iou_micro,
-    }
-
-    logging.info(f'* Evaluation result: {result}')
-
-    return result
-
-class PrinterCallback(TrainerCallback): 
-    def on_step_end(self, args, state, control, **kwargs):
-        if state.global_step % args.logging_steps == 0:  # Log at intervals defined by logging_steps
-            # Access model and dataloader
-            model = kwargs['model']
-            dataloader = kwargs['dataloader']
-
-            # Assuming you have a function to get predictions and labels
-            predictions, labels = self.get_predictions_and_labels(model, dataloader)
-
-            # Compute metrics
-            f1 = self.compute_f1(predictions, labels)
-            iou = self.compute_iou(predictions, labels)
-
-            # Log metrics
-            print(f"Step {state.global_step}: F1 Score: {f1}, IoU Score: {iou}")
-
 
 def train(args):
 
