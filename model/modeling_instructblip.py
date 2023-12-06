@@ -312,7 +312,7 @@ class FreezeInstructBlipForConditionalGeneration(InstructBlipForConditionalGener
         for param in self.language_model.parameters():
             param.requires_grad = False
 
-        self.set_ignore_keys()
+        # self.set_ignore_keys()
 
     def set_ignore_keys(self, ignore_prefix=('vision_model', 'language_model')):
         """
